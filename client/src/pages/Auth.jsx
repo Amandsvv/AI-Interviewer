@@ -5,16 +5,21 @@ import { motion } from "motion/react";
 import {FcGoogle} from "react-icons/fc";
 import { signInWithPopup } from 'firebase/auth';
 import { auth, provider } from '../utils/firebase';
+import axios from 'axios';
 
 function Auth() {
-
+  const url = import.meta.env.VITE_BACKEND_URL;
   const handleGoogleAuth  = async() => {
     try {
       const response = await signInWithPopup(auth, provider);
 
-      console.log(response);
-      const name = response.displayName;
-      const email = response.email;
+      const User = response.user;
+      const name = User.displayName;
+      const email = User.email;
+
+      const result = await axios.post(url + "/api/auth/google", {name, email}, {withCredentials : true})
+
+      console.log(result)
     } catch (error) {
       console.log(error)
     }
