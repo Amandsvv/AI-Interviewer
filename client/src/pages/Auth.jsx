@@ -6,9 +6,9 @@ import {FcGoogle} from "react-icons/fc";
 import { signInWithPopup } from 'firebase/auth';
 import { auth, provider } from '../utils/firebase';
 import axios from 'axios';
+import { serverUrl } from '../App';
 
 function Auth() {
-  const url = import.meta.env.VITE_BACKEND_URL;
   const handleGoogleAuth  = async() => {
     try {
       const response = await signInWithPopup(auth, provider);
@@ -17,9 +17,9 @@ function Auth() {
       const name = User.displayName;
       const email = User.email;
 
-      const result = await axios.post(url + "/api/auth/google", {name, email}, {withCredentials : true})
+      const result = await axios.post(serverUrl + "/api/auth/google", {name, email}, {withCredentials : true})
 
-      console.log(result)
+      console.log(result.data)
     } catch (error) {
       console.log(error)
     }
