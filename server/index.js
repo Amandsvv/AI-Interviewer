@@ -18,8 +18,10 @@ app.use(cookieParser())
 
 import authRouter from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
+import interviewRouter from "./routes/interview.routes.js";
 app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter)
+app.use("/api/interview", interviewRouter)
 
 connectDB()
 .then(() => {

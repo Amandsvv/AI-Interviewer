@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import axios from "axios"
 import { useDispatch } from 'react-redux'
 import { setUserData } from './redux/userSlice'
+import InterviewPage from './pages/InterviewPage'
 
 export const serverUrl = import.meta.env.VITE_BACKEND_URL;
 
@@ -29,6 +30,7 @@ function App() {
     <Routes>
       <Route path='/' element={<Home/>}/>
       <Route path='/auth' element={<Auth/>}/>
+      <Route path="/interview" element={<InterviewPage/>}/>
     </Routes>
   )
 }
