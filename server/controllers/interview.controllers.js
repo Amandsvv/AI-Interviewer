@@ -210,10 +210,10 @@ export const generatequestions = async (req, res) => {
 
 export const submitAnswer = async (req, res) => {
     try {
-        const [interviewId, questionIndex, answer, timeTaken] = req.body;
+        const {interviewId, questionIndex, answer, timeTaken} = req.body;
 
         const interview = await Interview.findById(interviewId);
-        const question = await questions[questionIndex]
+        const question = interview.questions[questionIndex]
 
         //If no answer
 
@@ -299,7 +299,7 @@ export const submitAnswer = async (req, res) => {
         }
         const parsed = JSON.parse(aiResponse);
 
-        question.answer = parsed.answer;
+        question.answer = answer;
         question.confidence = parsed.confidence;
         question.communication = parsed.communication;
         question.correctness = parsed.correctness;
