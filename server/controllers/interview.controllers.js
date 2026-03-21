@@ -373,3 +373,62 @@ export const finishInterview = async (req, res) => {
 
     }
 }
+
+export const getMyInterviews = async(req, res) => {
+    try {
+        const userId = req.user;
+        if(!userId){
+            return res.status(404).json({message : "Unauthorised access!"});
+        }
+        const interview = await Interview.findOne({userId}).sort({ createdAt : -1}).select("role experience mode finalscore status createdAt");
+
+        return res.status(200).json(interview);
+
+    } catch (error) {
+        return res.status(500).json({message : `failed to find currentUser interview ${error}`});
+    }
+}
+
+export const getInterviewReport = async(req, res) => {
+    try {
+        const interviewId = req.params.id;
+        if(!interviewId){
+            return res.status(400).json({message : "Interview Id missing"})
+        }
+        const interview = await Interview.findById(interviewId);
+
+        if(!interview){
+            return res.status(404).json({message : "Interview npt found."});
+        }
+
+        let totalConfidence = 0;
+        let totalCommunication = 0;
+        let totalCorrectness = 0;
+        const totalQuestions = interview.questions.length;
+
+        interview.questions.forEach((q) => {
+            totalConfidence += q.confidence || 0;
+            totalCommunication += q.communication || 0;
+            totalCorrectness += q.correctness || 0;
+        });
+
+        const avgConfidence = totalQuestions ? totalConfidence / totalQuestions : 0;
+
+        const avgCommunication = totalQuestions ? totalCommunication / totalQuestions : 0;
+
+        const avgCorrectness = totalQuestions ? totalCorrectness / totalQuestions : 0;
+
+        return res.status(200).json({
+            finalScore : interview.finalScore,
+            confidence : Number(avgConfidence.toFixed(2)),
+            communication : Number(avgCommunication.toFixed(2)),
+            correctness : Number(avgCorrectness.toFixed(2)),
+            questionWiseScore : interview.questions
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            message : `failed to find currentUser interview report : ${error}`
+        })
+    }
+}
