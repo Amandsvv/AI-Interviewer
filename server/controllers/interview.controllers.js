@@ -376,11 +376,11 @@ export const finishInterview = async (req, res) => {
 
 export const getMyInterviews = async(req, res) => {
     try {
-        const userId = req.user;
+        const userId = req.userId;
         if(!userId){
             return res.status(404).json({message : "Unauthorised access!"});
         }
-        const interview = await Interview.findOne({userId}).sort({ createdAt : -1}).select("role experience mode finalscore status createdAt");
+        const interview = await Interview.find({userId}).sort({ createdAt : -1}).select("role experience mode finalScore status createdAt");
 
         return res.status(200).json(interview);
 
