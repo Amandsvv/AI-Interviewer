@@ -1,122 +1,186 @@
-# AI Interview Taker
+# AI Interviewer
 
-This repository contains the architecture and scaffolding for a production-grade AI-powered interview platform. The system is designed using a layered architecture inspired by FAANG-style systems and focusses on scalability, real-time performance, and personalization.
+This project is a full-stack AI interview practice application with:
 
-## 🧠 System Architecture Overview
+- React + Vite frontend
+- Express + MongoDB backend
+- Google sign-in via Firebase on the client
+- Cookie-based JWT authentication on the server
+- OpenRouter LLM integration for resume analysis, question generation, and answer evaluation
 
-```
-┌─────────────────────────────┐
-│        Frontend App         │
-└──────────────┬──────────────┘
-               ↓
-┌─────────────────────────────┐
-│        API Gateway           │
-└──────────────┬──────────────┘
-               ↓
-┌─────────────────────────────┐
-│   Interview Orchestrator     │
-└──────────────┬──────────────┘
-               ↓
-┌────────────────────────────────────────┐
-│ AI Services + Evaluation + RAG Engine  │
-└──────────────┬─────────────────────────┘
-               ↓
-┌─────────────────────────────┐
-│ Databases + Analytics Layer │
-└──────────────┬──────────────┘
-``` 
+## Implemented Architecture
 
-## Layers and Responsibilities
+### Frontend (client)
 
-### 1. Frontend Layer
-- **Tech:** Next.js (React) with Tailwind CSS, WebRTC for real-time audio/video.
-- **Features:** Video interview UI, chat interactions, resume upload, live transcription, feedback dashboard, mic/webcam capture, streaming AI responses.
+- Framework: React 19 with Vite
+- Routing: react-router-dom
+- State management: Redux Toolkit
+- Styling: Tailwind CSS v4 classes + custom CSS
+- Animations: motion
+- Charts and score widgets: recharts, react-circular-progressbar
+- Report export: jspdf, jspdf-autotable
+- Voice features in browser:
+   - Text to speech: window.speechSynthesis
+   - Speech to text: window.webkitSpeechRecognition (when supported)
 
-### 2. API Gateway Layer
-- **Tech:** FastAPI (Python).
-- **Responsibilities:** Authentication (JWT), rate limiting, request routing, session management.
-- Routes user requests to the Interview Service.
+Main flow in UI:
 
-### 3. Interview Orchestrator
-- **Core service** controlling interview flow.
-- Implements a state machine: `INIT → QUESTION → LISTEN → ANALYZE → FOLLOWUP → SCORE → NEXT`.
-- Stores interview state: round, difficulty, past answers, detected weaknesses.
+1. User opens home page and authenticates with Google.
+2. User starts interview setup (role, experience, mode, optional resume PDF).
+3. Resume is uploaded and analyzed (optional).
+4. Backend generates 5 interview questions and deducts credits.
+5. Interview runs with timer, mic/text answer input, and per-question feedback.
+6. Final report is shown with metrics and downloadable PDF.
+7. History page lists previous interview attempts.
 
-### 4. AI Intelligence Layer
-Microservices include:
+### Backend (server)
 
-- **Resume Intelligence Service:** Extracts text from PDF, performs skill extraction, builds embeddings, stores in vector DB.
-- **Question Generation Engine (RAG):** Combines resume, job role, round to retrieve relevant questions via vector search and LLM.
-- **Speech Processing Service:** Transcribes audio with Whisper, analyzes transcripts for fillers, pauses, confidence.
-- **Evaluation Engine:** Scores answers on clarity, correctness, structure, confidence; outputs JSON rubric.
-- **Feedback Generator:** Converts scores into coaching advice and improved answer suggestions.
+- Runtime: Node.js + Express
+- Database: MongoDB (Mongoose)
+- Auth: JWT in httpOnly cookie
+- File upload: multer (PDF upload to server/public)
+- PDF parsing: pdfjs-dist
+- AI service: OpenRouter chat completions via axios
 
-### 5. Data Layer
-A polyglot persistence strategy:
-- **PostgreSQL** for structured data (users, interviews, scores, history).
-- **Vector DB** (Pinecone/Weaviate/Chroma) for embeddings, past answers, question bank.
-- **Analytics DB** for performance trends and metrics.
+Backend modules:
 
-## Real-Time Interview Flow
+- config:
+   - Database connection
+   - JWT generation
+- middlewares:
+   - Auth guard reads and verifies token cookie
+   - Multer upload middleware
+- models:
+   - User (name, email, credits)
+   - Interview (metadata + embedded question documents)
+- controllers:
+   - Authentication
+   - User profile
+   - Resume analysis, question generation, answer scoring, interview finalization, history/report APIs
+- services:
+   - OpenRouter request helper
 
-```
-User speaks
-   ↓
-Audio Stream
-   ↓
-Speech-to-text
-   ↓
-Transcript
-   ↓
-Evaluation Engine
-   ↓
-Score Update
-   ↓
-AI Generates Next Question
-   ↓
-Voice Response
-``` 
+## Actual Data Model
 
-Latency target: < 2 seconds.
+### User
 
-## AI Memory System
-Supports short-term (current interview), long-term (user weaknesses), and semantic memory (skill profile). Past interviews influence question selection to act as a personal coach.
+- name: string
+- email: unique string
+- credits: number (default 100)
 
-## Scalability Strategy
-- Use queues (Redis/Kafka) to decouple requests from AI workers.
-- Individual workers for question generation, evaluation, feedback.
-- Horizontal scaling via containerized GPU workers.
+### Interview
 
-## Deployment
-- **Frontend:** Vercel.
-- **Backend & Workers:** Docker on AWS/GCP with GPU instances for AI.
-- **Databases:** Managed cloud services.
+- userId: reference to user
+- role: string
+- experience: string
+- mode: Technical or HR
+- resumeText: string
+- questions: array with fields like:
+   - question
+   - difficulty
+   - answer
+   - timeLimit
+   - feedback
+   - score
+   - confidence
+   - communication
+   - correctness
+- finalScore
+- status
+- timestamps
 
-## Security
-- JWT authentication, encrypted resumes, consent for recordings, RBAC.
+## API Surface (Current)
 
-## Tech Stack Justification
-| Layer     | Tech         | Why                |
-|-----------|--------------|--------------------|
-| Frontend  | Next.js      | SSR + realtime UI  |
-| Backend   | FastAPI      | async, Python AI   |
-| LLM       | OpenAI/Llama | reasoning capabilities |
-| STT       | Whisper      | accurate speech    |
-| Vector DB | Pinecone     | semantic retrieval |
-| Cache     | Redis        | low latency        |
-| Queue     | Kafka/RQ     | scaling            |
-| Deploy    | Docker       | portability        |
+### Auth routes
 
+- POST /api/auth/google
+- GET /api/auth/logout
 
-## Next Steps
-1. Scaffold frontend and backend projects.
-2. Implement state machine for orchestrator.
-3. Set up vector database and resume parsing service.
-4. Build AI microservices with LLM prompts and rubrics.
-5. Establish CI/CD pipelines and containerization.
+### User routes
 
----
+- GET /api/user/me
 
-> "We designed an orchestrator-based AI system where interview flow is controlled by a state machine, supported by RAG-driven question generation and rubric-based evaluation. The system uses vector memory to personalize interviews over time."
+### Interview routes
 
-This README serves as the foundation you can reference in interviews, hackathons, or investor pitches.
+- POST /api/interview/resume
+- POST /api/interview/generate-questions
+- POST /api/interview/submit-answer
+- POST /api/interview/finish
+- GET /api/interview/get-interview
+- GET /api/interview/report/:id
+
+All user and interview routes are protected by auth middleware except Google auth/logout.
+
+## End-to-End Request Flow
+
+1. Client signs in with Firebase Google popup.
+2. Client sends name/email to server auth API.
+3. Server creates/fetches user, signs JWT, stores token in cookie.
+4. Client calls protected APIs with credentials.
+5. For resume analysis:
+   - PDF uploaded via multipart form
+   - Text extracted with pdfjs-dist
+   - LLM returns structured JSON (role, experience, projects, skills)
+6. For interview generation:
+   - Server validates credits and interview input
+   - LLM returns 5 questions
+   - Server stores interview and decrements credits
+7. For answer submission:
+   - Server evaluates answer via LLM
+   - Stores score dimensions + short feedback per question
+8. On finish:
+   - Server computes averages and final score
+   - Returns report payload to frontend
+
+## Project Structure
+
+- client: frontend app
+- server: backend API app
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+
+- MongoDB connection string
+- OpenRouter API key
+- Firebase project with Google auth enabled
+
+### Environment files
+
+Create environment files:
+
+- client/.env
+   - VITE_FIREBASE_KEY
+   - VITE_BACKEND_URL
+
+- server/.env
+   - PORT
+   - MONGODB_URI
+   - JWT_SECRET
+   - OPENROUTER_API_KEY
+   - FRONTEND_URL (optional, defaults to http://localhost:5173)
+
+### Run backend
+
+From server:
+
+- npm install
+- npm run dev
+
+### Run frontend
+
+From client:
+
+- npm install
+- npm run dev
+
+## What Is Not Implemented Yet
+
+- Real payment gateway integration (pricing page is UI-only)
+- Advanced server-side audio processing pipeline
+- Multi-service microservice deployment
+- Vector database or RAG infrastructure
+- Queue-based orchestration
+
+This README now reflects the currently implemented codebase and runtime behavior.
