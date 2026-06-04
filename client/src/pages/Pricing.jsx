@@ -2,10 +2,17 @@ import React, { useState } from 'react'
 import { FaArrowLeft, FaCheckCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react"
+import axios from "axios";
+import { serverUrl } from '../App';
+import { useDispatch } from 'react-redux';
+import { setUserData } from '../redux/userSlice';
+
 
 function Pricing() {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState("free");
+  const [loadingPlan, setLoadingPlan] = useState(null);
+  const dispatch = useDispatch();
 
   const plans = [
     {
@@ -51,6 +58,50 @@ function Pricing() {
     },
   ];
 
+  const handlPayment = async (plan) => {
+    try {
+      setLoadingPlan(plan.id)
+      const amount = plan.id === "basic" ? 100 : plan.id === "pro" ? 500 : 0;
+
+      const result = await axios.post(serverUrl + "/api/payment/order", {
+        planId : plan.id,
+        amount: amount,
+        credits : plan.credits,
+      }, {withCredentials : true})
+      
+      console.log(result.data)
+
+      const options = {
+        key : import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount : result.data.amoount,
+        currency : "INR",
+        name : "AI.Interviewer",
+        description: `${plan.name} - ${plan.credits} Credits`,
+        order_id : result.data.id,
+        handler : async function (response){
+          console.log(response)
+          const verifypay = await axios.post(serverUrl + "/api/payment/verify", response, {withCredentials : true});
+
+          dispatch(setUserData(verifypay.data.user))
+
+          alert("Payment Successfull. Credits Added :)")
+          navigate("/")
+        },
+        theme:{
+          color : "#10b981"
+        }
+      }
+
+      const rzp = new window.Razorpay(options)
+      rzp.open()
+
+      setLoadingPlan(null);
+
+
+    } catch (error) {
+
+    }
+  }
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50 py-16 px-6'>
@@ -79,11 +130,10 @@ function Pricing() {
               onClick={() => !plan.default && setSelectedPlan(plan.id)}
 
               className={`relative rounded-3xl p-8 transition-all duration-300 border
-          ${
-            isSelected 
-            ? "border-emerald-600 shadow-2xl bg-white"
-            : "border-gray-200 bg-white shadow-md"
-          }
+          ${isSelected
+                  ? "border-emerald-600 shadow-2xl bg-white"
+                  : "border-gray-200 bg-white shadow-md"
+                }
           ${plan.default ? "cursor-default" : "cursor-pointer"}`}
             >
               {/* Badge */}
@@ -124,7 +174,7 @@ function Pricing() {
               <div className='mt-6  space-y-3 text-left'>
                 {plan.features.map((feature, i) => (
                   <div key={i} className='flex items-center gap-3'>
-                    <FaCheckCircle className='text-emerald-500 text-sm'/>
+                    <FaCheckCircle className='text-emerald-500 text-sm' />
                     <span className='text-gray-700'>{feature}</span>
                   </div>
                 ))
@@ -132,20 +182,29 @@ function Pricing() {
                 }
               </div>
               {!plan.default &&
-                <button className={`w-full mt-8 py-3 rounded-xl font-semibold transition ${
-                  isSelected
-                  ? "bg-emerald-600 text-white hover:opacity-90"
-                  : "bg-gray-100 text-gray-700 hover:bg-emerald-50"
-                }`}
+                <button
+                  disabled={loadingPlan === plan.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isSelected) {
+                      setSelectedPlan(plan.id)
+                    } else {
+                      handlPayment(plan)
+                    }
+                  }}
+                  className={`w-full mt-8 py-3 rounded-xl font-semibold transition ${isSelected
+                      ? "bg-emerald-600 text-white hover:opacity-90"
+                      : "bg-gray-100 text-gray-700 hover:bg-emerald-50"
+                    }`}
                 >
-                  {isSelected ? "Proceed To Pay" : "Select A Plan"}
+                  {loadingPlan === plan.id ? "Processing" : isSelected ? "Proceed To Pay" : "Select A Plan"}
                 </button>
 
               }
             </motion.div>
-      )
-        } )}
-    </div>
+          )
+        })}
+      </div>
     </div >
   )
 }
